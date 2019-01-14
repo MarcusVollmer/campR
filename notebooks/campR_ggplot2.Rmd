@@ -1,0 +1,128 @@
+---
+title: "campR -- ggplot2"
+author: "[Marcus Vollmer](https://github.com/MarcusVollmer/campR)"
+date: "2019-01-14"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+---
+
+This is a [campR](https://github.com/MarcusVollmer/campR) notebook introducing ggplot2.
+
+## Libraries and data
+
+The following commands imports the libraries of **ggplot2** and **ggplot2movies**.
+The latter package makes the data frame *movies* available a collection of motion pictures with user ratings frome the internet movie database (IMDB). We take a short look on the variables available.
+```{r}
+library(ggplot2)
+library(ggplot2movies)
+head(movies)
+
+```
+
+## Basic graphics building
+The [ggplot2 cheat sheet](https://github.com/rstudio/cheatsheets/blob/master/data-visualization-2.1.pdf) summarizes the programming syntax.
+
+> ggplot(data = \<DATA\>) +  
+> \<GEOM_FUNCTION\>(mapping=aes(\<MAPPINGS\>), stat=\<STAT\> , position=\<POSITION\>) +  
+> \<COORDINATE_FUNCTION\> +  
+> \<FACET_FUNCTION\> +  
+> \<SCALE_FUNCTION\> +  
+> \<THEME_FUNCTION\>
+
+
+```{r echo=TRUE}
+# Lets define the data basis
+  (p0 = ggplot(data=movies, aes(year)))
+
+# and add a geom layer to draw a histogram
+  (p1 = p0 + geom_histogram())
+
+# We can change the breaks of the histogram in this way
+  (p1 = p0 + geom_histogram(breaks=seq(1900,2010,by=1)))
+
+# We add a title and rename the x-axis
+  (p1 = p1 + labs(title='Movie distribution', subtitle='Imdb listed movies', x='Release date'))
+```
+
+
+### Geoms
+Geoms describes the type of geometric objects that represent data.
+```{r echo=TRUE}
+# We add another geometrical layer to the graph which smooths the discrete density
+  p0 + geom_histogram(aes(y=..density..)) + geom_density(alpha=.2, fill="#FF6666")
+
+# The histogram can be separated according to a factor variable
+  ggplot(data=movies, aes(year, color=factor(Animation))) +
+    geom_histogram()
+``` 
+
+
+### Scales
+Scales describes how visual characteristics are converted to displayed values.
+```{r echo=TRUE}
+# Lets show the counts on log scale
+  p1 + scale_y_log10()
+```
+  
+### Facets
+Facets describes how data is split into subsets and displayed as multiple graphs.
+```{r echo=TRUE} 
+# To show the data in panels use facets
+  (p2 = ggplot(data=movies, aes(year, color=factor(Animation))) +
+    geom_histogram(aes(y=..density..)) + 
+    facet_grid(factor(Animation) ~ .) + 
+    geom_density(alpha=0.6))
+  
+# You can also define a grid of facets
+  p2 + facet_grid(factor(Animation) ~ factor(Action))
+
+# Change the facet labels from {0,1} to self-descriptive labels
+# That's not how it works:
+  movies$Action = factor(movies$Action, c(0,1), c('No action', 'Action'))
+  p2 + facet_grid(factor(Animation) ~ Action)
+```
+
+### Themes
+Themes describes the look of non-data components of the plot.
+```{r echo=TRUE} 
+# Add a theme layer to graph
+  p2 + theme_classic()
+  p2 + theme_bw()
+  p2 + theme_dark()
+  p2 + theme_void()
+
+# or changing various properties of the theme
+  p2 + theme(axis.ticks = element_line(size = 2),
+             panel.background = element_rect(fill="#AAE9AA"))
+  
+# it handles also the legend 
+  p2 + theme(legend.justification = "top")
+  p2 + theme(legend.position = c(.25, .95),
+    legend.justification = c("right", "top"),
+    legend.margin = margin(6, 6, 6, 6))
+```
+
+## Scatterplot
+```{r}
+# Lets plot the movie budget together with the average IMDB rating
+  (p3 = ggplot(movies, aes(budget,rating)) +
+    geom_point())
+
+# Mark the most prominents movies
+  library(ggrepel)
+  p3 + geom_label_repel(data=subset(movies, budget>1.5*10^8), aes(label=title, fill=factor(length<120)), size=3.5, box.padding=unit(0.35, "lines"), point.padding=unit(0.3, "lines")) +
+    theme(legend.position="bottom")
+
+
+# Lets rely on minimum 100 votes and use a log scale
+  (p4 = ggplot(subset(movies, votes>100), aes(budget,rating)) +
+    geom_point() +
+    scale_x_continuous(trans='log10'))
+  
+# Choose hexagonal geometry to summarize/cluster multiple data points
+  p4 + geom_hex()
+```
+
+... to be continued ...
