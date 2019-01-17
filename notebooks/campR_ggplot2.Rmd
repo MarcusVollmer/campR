@@ -1,7 +1,7 @@
 ---
 title: "campR -- ggplot2"
 author: "[Marcus Vollmer](https://github.com/MarcusVollmer/campR)"
-date: "2019-01-14"
+date: "2019-01-17"
 output:
   html_document:
     toc: true
@@ -40,7 +40,7 @@ The [ggplot2 cheat sheet](https://github.com/rstudio/cheatsheets/blob/master/dat
   (p1 = p0 + geom_histogram())
 
 # We can change the breaks of the histogram in this way
-  (p1 = p0 + geom_histogram(breaks=seq(1900,2010,by=1)))
+  (p1 = p0 + geom_histogram(breaks=seq(1900,2010,by=5)))
 
 # We add a title and rename the x-axis
   (p1 = p1 + labs(title='Movie distribution', subtitle='Imdb listed movies', x='Release date'))
@@ -77,15 +77,22 @@ Facets describes how data is split into subsets and displayed as multiple graphs
   
 # You can also define a grid of facets
   p2 + facet_grid(factor(Animation) ~ factor(Action))
+  
+# Append the facet grid to use three variables
+  p2 + facet_grid(factor(Animation) ~ factor(Action) + factor(Comedy))
 
-# Change the facet labels from {0,1} to self-descriptive labels
-# That's not how it works:
+# Confused about the binary labelling? So change the facet labels from {0,1} to self-descriptive labels.
+# Labeling the factor level works fine:
   movies$Action = factor(movies$Action, c(0,1), c('No action', 'Action'))
-  p2 + facet_grid(factor(Animation) ~ Action)
+  ggplot(data=movies, aes(year, color=factor(Animation))) +
+    geom_histogram(aes(y=..density..)) +
+    geom_density(alpha=0.6) +
+    facet_grid(factor(Animation) ~ Action) 
 ```
 
 ### Themes
 Themes describes the look of non-data components of the plot.
+Get informed on named colors in R on http://www.stat.columbia.edu/~tzheng/files/Rcolor.pdf
 ```{r echo=TRUE} 
 # Add a theme layer to graph
   p2 + theme_classic()
@@ -95,14 +102,22 @@ Themes describes the look of non-data components of the plot.
 
 # or changing various properties of the theme
   p2 + theme(axis.ticks = element_line(size = 2),
-             panel.background = element_rect(fill="#AAE9AA"))
+             panel.background = element_rect(fill='cornsilk2'))
   
-# it handles also the legend 
+# you can also use the corresponding hex color or RGB color codes:
+  p2 + theme(axis.ticks = element_line(size = 2),
+             panel.background = element_rect(fill='#eee8cd')) 
+  p2 + theme(axis.ticks = element_line(size = 2),
+             panel.background = element_rect(fill=rgb(238/255,232/255,205/255))) 
+  
+  
+# Themes can also handle legends
   p2 + theme(legend.justification = "top")
   p2 + theme(legend.position = c(.25, .95),
     legend.justification = c("right", "top"),
     legend.margin = margin(6, 6, 6, 6))
 ```
+
 
 ## Scatterplot
 ```{r}
@@ -115,13 +130,13 @@ Themes describes the look of non-data components of the plot.
   p3 + geom_label_repel(data=subset(movies, budget>1.5*10^8), aes(label=title, fill=factor(length<120)), size=3.5, box.padding=unit(0.35, "lines"), point.padding=unit(0.3, "lines")) +
     theme(legend.position="bottom")
 
-
 # Lets rely on minimum 100 votes and use a log scale
   (p4 = ggplot(subset(movies, votes>100), aes(budget,rating)) +
     geom_point() +
     scale_x_continuous(trans='log10'))
   
 # Choose hexagonal geometry to summarize/cluster multiple data points
+  library(hexbin)
   p4 + geom_hex()
 ```
 
