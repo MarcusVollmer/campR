@@ -1,0 +1,251 @@
+---
+title: "campR -- summary tables"
+author: '[Marcus Vollmer](https://github.com/MarcusVollmer/campR)'
+institute: "Institut of Bioinformatics, University Medicine Greifswald"
+date: '2019-06-06'
+header-includes: 
+   - \usepackage{rotating}
+   - \usepackage{longtable}
+output:
+  html_document:
+    toc: yes
+    toc_depth: '3'
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+is_html = function() {knitr::opts_knit$get("rmarkdown.pandoc.to")=="html"}
+is_latex = function() {knitr::opts_knit$get("rmarkdown.pandoc.to")=="latex"}
+
+library(knitr)
+opts_chunk$set(tidy=TRUE)
+```
+
+
+This is a [campR](https://github.com/MarcusVollmer/campR) notebook introduces summary tables with 'xtable', 'stargazer', 'rapport' and show how to use own helper functions for group comparisons.
+
+Rapport needs 'Pandoc' which is not available in all R versions. After that run: 'install_github(\'rapport\', \'rapporter\')'.
+
+# Summary tables {.tabset .tabset-fade .tabset-pills}
+## Libraries and data
+
+The following commands imports the libraries of **xtable**, **stargazer** and **rapport**. Further, we import some user defined function from GitHub.
+The latter package makes the data frame *movies* available a collection of motion pictures with user ratings frome the internet movie database (IMDB).
+```{r}
+library(xtable)
+library(stargazer)
+library(rapport)
+
+# Load user created functions
+  library(devtools)
+  repo = "https://raw.githubusercontent.com/MarcusVollmer/R-Helper-Functions/master/"
+  source_url(paste0(repo,"strtable.R"))
+  source_url(paste0(repo,"stargazer_long.R"))
+  source_url(paste0(repo,"characteristics_table.R"))
+  source_url(paste0(repo,"mytable.R"))
+
+library(ggplot2movies)
+```
+
+\newpage
+## xtable
+
+Lets have short look what kind of data xtable can process:
+```{r}
+methods(xtable)
+```
+
+The [xtable documentation](https://cran.r-project.org/web/packages/xtable/xtable.pdf) summarizes the programming syntax and lists available functions.
+
+We will plot the head of the data and will display the summary of a linear model in the default R:markdown fashion.
+```{r echo=TRUE}
+# Lets quickly check the movie data base
+  (h = head(movies))
+  movies$genre = factor(with(movies, paste(Action, Comedy, Drama, Documentary, Romance, Short, sep="")), c("100000","010000","001000","000100","000010","000001"), c("Action", "Comedy", "Drama", "Documentary", "Romance", "Short"))
+
+# Build a generalized linear model to explain the budget
+  mymodel = lm(budget ~ length + rating + year + genre, movies)
+  (s = summary(mymodel))
+```
+ 
+Next, we will plot the results with **xtable** as \LaTeX and HTML output.
+```{r echo=TRUE, results='asis', include=is_latex()}
+# The basic LaTeX output
+  xtable(h)
+  xtable(mymodel)
+```
+
+```{r echo=TRUE, results='asis', include=is_html()}
+# The basic HTML output
+  print(xtable(h), type="html")
+  print(xtable(mymodel), type="html")
+        
+# Alternatively use kable for html tables
+  knitr::kable(h, caption="Table with kable")
+  
+# This results in an error
+  #knitr::kable(mymodel, caption="Table with kable")
+  # Error in as.data.frame.default(x) : cannot coerce class ""lm"" to a data.frame
+```
+
+
+If you need to change some properties use **options**:
+```{r echo=TRUE, results='asis', include=is_html()}
+# Changing default options for the entire markdown file are quite easy
+  options(xtable.caption="Nice table")
+  options(xtable.timestamp="")
+  
+# To see the options to set **print.xtable**:
+  options(xtable.rotate.colnames=TRUE)
+  options(xtable.include.rownames=FALSE)
+  print(xtable(h), type="html")
+```
+
+```{r echo=TRUE, results='asis', include=is_latex()}
+# The basic LaTeX output
+  xtable(h)
+  xtable(mymodel)
+```
+
+\newpage
+## stargazer
+
+Stargazer produces LaTeX code, HTML/CSS code and ASCII text for well-formatted tables.
+```{r echo=TRUE, results='asis', include=is_latex()}
+# The basic LaTeX output
+  stargazer(h)
+  stargazer(mymodel)
+  
+#
+  stargazer(h, summary=FALSE)
+```
+
+Lets have short look at the supported objects:
+```{r echo=TRUE}
+  ?`stargazer models`
+```
+
+Stargazer in action to display results of linear models:
+```{r echo=TRUE, results='asis', include=is_latex()}
+# Lets model the budget of movies with and without the interaction of movie length and genre
+  m1 = lm(budget ~ length + genre + rating + year, movies)
+  m2 = lm(budget ~ length*genre + rating + year, movies)
+  
+# Stargazer has a nice combined representation of multiple models
+  stargazer(m1, m2, title="Regression results")
+  
+# You have various properties you can change according to your need
+  stargazer(m1, m2, title="Regression results",
+            single.row=TRUE, ci=TRUE, ci.level=0.95,
+            decimal.mark='.', digits=0)
+```
+
+Or you can use the html output:
+```{r echo=TRUE, results='asis', include=is_html()}
+# Stargazer has a nice combined representation of multiple models
+  stargazer(m1, m2, type="html", title="Regression results")
+  
+# You have various properties you can change according to your need
+  stargazer(m1, m2, type="html", title="Regression results",
+            single.row=TRUE, ci=TRUE, ci.level=0.95,
+            decimal.mark='.', digits=0)
+```
+
+
+\newpage
+## Own summary functions
+
+<R-Helper-Functions>[https://github.com/MarcusVollmer/R-Helper-Functions](R-Helper-Functions) can be sourced directly from GitHub to fasten and to standardize the analysis and to allow reproducability.
+
+Currently there are four useful functions provided:
+
+1. strtable.R -- a modified str implementation for data frames (originally published by Jason Bryer)
+2. stargazer_long.R -- a modification of stargazer to display long tables, to allow rotations and LaTeX column specifications
+3. mytable.R -- a cross-table for factor variables to display counts or summary statistics of a continuous variable with univariable statistical testing
+4. characteristics_table.R -- creates stratified tables of data along with univariable statistical testing
+
+
+### strtable and stargazer_long
+
+```{r, results='asis', include=is_latex()}
+# Some genre columns should be set to logicals
+  booleanvars = colnames(movies[,18:24])
+  movies[,booleanvars] = lapply(booleanvars, function(x) as.logical(movies[,x]))
+
+# Generate a summary table using strtable
+  s = strtable(movies, n=10, width=300)
+
+# For LaTeX output as a longtable use the follwing command.
+# The compiling of the LaTeX script to PDF need the inclusion of the **longtable** in the header.
+  stargazer_long(s[, 1:4], summary=FALSE, rownames=FALSE, output="cccp{9cm}", rotate=60)
+```
+
+### mytable
+#### Cross table for count data with confidence intervals
+
+Printing a cross table with p value and percentages (rows sums up to 100%).
+```{r, results='asis', include=is_latex()}
+  library(PropCIs)
+  mytable(movies$Animation, movies$Action, ci=FALSE, prec="%.2f", latex=TRUE)
+```
+
+Printing the same table with 95% exact Clopper-Pearson confidence intervals (PropCIs package required) and less digits with % sign, a fixed column width and floating point p-value style:
+```{r, results='asis', include=is_latex()}
+  mytable(movies$Animation, movies$Action, ci=0.95, prec="%.1f", prec_p="%.4f", latex="rp{4cm}p{4cm}", pct_sign="%")
+```
+
+
+#### Cross table for a continuous variable with statistical testing
+For group-wise testing of a continuous variable pass a third variable to mytable, e.g. comparing the movie rating in relation to the genres:
+```{r, results='asis', include=is_latex()}
+  mytable(movies$Animation, movies$Action, movies$budget, latex=TRUE)
+
+# Change the precision of the numbers and the p-value by adding the properties and setting the scientific format with digits:
+  mytable(movies$Animation, movies$Action, movies$budget, prec="%.2e", prec_p="%.2e", latex=TRUE)
+  mytable(movies$Action, movies$length<60, movies$budget, prec="%.2e", prec_p="%.2e", latex=TRUE)
+```
+
+
+### characteristics_table
+
+This is a helpful function to compute and display a characteristics table of the study population with separate columns for each cohort, e.g. treatment vs. control. In our example data set we stratify the movie database by `Documentary` which is a binary variable, indicating whether the movie is a documentary or not.
+characteristics_table.R will do the job of printing characteristics seperated by a binary or factorial response (genre). P-values are the results of statistical testing comparing both groups: T test and Wilcoxon ranksum test for continous variables with mean and SD or median and quartiles respectively. Statistical testing with categorical data is conducted by Fishers exact test or Chi-Squared-Test (categorical with more than 3 levels). Missing values (NA’s) was omitted for this analysis. Precision of numerials can be set individually for continuous values and p values. Default is one digit after decimal place `prec="%.1f"`, `prec_continuous="%.0f"` and four digits for p values `prec_p="%.4f"`.
+
+```{r, results='asis', include=is_latex()}
+# For LaTeX output as a longtable use the following command.
+# The compiling of the LaTeX script to a PDF needs the inclusion of the **longtable** in the header.
+  characteristics_table(-2, "Documentary", movies[,-1], "col", prec="%.1f", prec_continuous="%.1f", latex="p{1.5cm}p{2cm}rrrr", tablefootnote=FALSE)
+```
+
+It also works for categorical variables with more than two levels, such as `genre`, which has six levels specified in movies with a single/unique genre assignment. Statistical testing will change to Chi-Squared-Testing, Kruskal-Wallis rank sum test and One-way analysis of variance (ANOVA). Footnotes will tell you the statistical test behind the p values.
+```{r, results='asis', include=is_latex()}
+# You may change the footnote labeling as follows:
+  characteristics_table(-2, "genre", movies[,-c(1,7:16)], "col", prec="%.1f", prec_continuous="%.1f", prec_p="%.3f", tablefootnote=TRUE,  latex="p{1.2cm}p{1.5cm}p{1.4cm}p{1.4cm}p{1.4cm}p{1.4cm}p{1.4cm}p{1.4cm}rr", fn=c("'", "_", "''", "_", "'''", "_"))
+
+# Or firstly store the results, and use stargazer_long for the subsequent LaTeX output, e.g. with rotation:
+  movies$budget = movies$budget/1e6
+  s = characteristics_table(-2, "genre", movies[,-c(1,7:16)], "col", prec="%.1f", prec_continuous="%.1f", prec_p="%.3f", tablefootnote=FALSE)
+  stargazer_long(s, summary=FALSE, rownames=FALSE, output="p{1.2cm}p{1.5cm}p{1.4cm}p{1.4cm}p{1.4cm}p{1.4cm}p{1.4cm}p{1.4cm}rr", rotate=60)
+```
+
+
+\newpage
+## Rapport
+
+<rapport>[http://rapport-package.info/](rapport) is an R package that facilitates creation of reproducible statistical report templates. Once created, rapport templates can be exported to various external formats: HTML, LaTeX, PDF, ODT, DOCX etc.
+
+Let's have short look at the available templates:
+```{r}
+rapport.ls()
+```
+
+Lets try to rebuild the Wilcoxon test results and compare with mytable results:
+```{r, results='asis', include=is_latex()}
+  #rapport('WilcoxonTest.tpl', data=movies, ...)
+
+  #mytable(movies$Animation, movies$Action, movies$budget, prec="%.2e", prec_p="%.2e", latex=TRUE)
+```
+... to be continued
